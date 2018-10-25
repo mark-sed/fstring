@@ -11,8 +11,6 @@ typedef struct{
 
 #define fstrlen //finish
 
-//TODO: ADD Ranges
-
 /**
  * Konverze C stringu na FSTring
  */
@@ -22,7 +20,7 @@ fstring *fstrfromstr(char *str);
 /**
  * Konverze FSTringu na C string
  */
-char *fstrtostr(fstring fstr);
+char *fstrtostr(fstring fstr, unsigned int start, unsigned int end);
 
 /**
  * Dynamicky vytvoří nový FSTring

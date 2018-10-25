@@ -1,5 +1,6 @@
 #include "fstring.h"
 
 int main(int argc, char *argv[]){
-    return 0;
+    char *str = "Hello, how's it going guys";
+    return fstrfromstr(str);
 }
