@@ -10,28 +10,34 @@ typedef struct{
 	void *alloc_start;  // Tells where the text actually starts (padding for alignmnet)
 } fstring;
 
-#define fstrlen //finish
+/**
+ * Returns length of a fstring text
+ */
+#define fstrlen(fstr) fstr->length
+
+/**
+ * Accesses the string part of the object
+ */
+#define fstr_get_str(fstr) fstr->text
 
 /**
  * Konverze C stringu na FSTring
  */
 fstring *fstrfromstr(char *str);
 
-#ifdef _ALL_DONE_
 /**
  * Konverze FSTringu na C string
  */
-char *fstrtostr(fstring fstr, unsigned int start, unsigned int end);
-
-/**
- * Dynamicky vytvoří nový FSTring
- */ 
-fstring *fstrnew(const char*); //Variation with max length
+char *fstrtostr(fstring *fstr, unsigned int start, unsigned int end);
+#define _fstrtostr(fstr) fstrtostr(fstr, 0, fstr->length)
 
 /**
  * Smaže FSTring (uvolní paměť)
  */
 void fstrfree(fstring *fstr);
+#define _fstrtostr_free(cstr, fstr, start, end) do{cstr = fstrtostr(fstr, start, end); fstrfree(fstr)}while 0;
+
+#ifdef _ALL_DONE_
 
 /**
  * Rewrites FSTring
@@ -39,14 +45,19 @@ void fstrfree(fstring *fstr);
 fstring *fstrset();
 
 /**
+ * Appends text to the end of fstring
+ */
+void fstrappend(fstring *fstr, char *str);
+
+/**
  * Převede řetězec na velká písmena
  */
-fstr_to_upper();
+void fstr_to_upper(fstring *fstr, unsigned int start, unsigned int end);
 
 /**
  * Převede řetězec na malá písmena
  */
-fstr_to_lower();
+void fstr_to_lower(fstring *fstr, unsigned int start, unsigned int end);
 
 /**
  * Vyhledá první výskyt podřetězce v řetězci
@@ -61,7 +72,7 @@ fstr_find_last();
 /**
  * Převrátí řetězec
  */
-fstrflip();
+void fstrflip(fstring *fstr, unsigned int start, unsigned int end);
 
 /**
  * Nakopíruje string nebo FSTring do druhého FSTringu (posune znaky)
@@ -85,7 +96,7 @@ fstrsplit();
 /**
  * Zvětší pouze první písmeno
  */
-fstrcapitalize();
+void fstrcapitalize(fstring *fstr, unsigned int start);
 
 /**
  * Vrací kolikrát se substring nachází ve stringu

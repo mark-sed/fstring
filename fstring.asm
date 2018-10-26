@@ -8,16 +8,19 @@
 ;;
 
 ;; Exported functions 
-global fstrfromstr
+global fstrfromstr                              ;; Converts cstring to fstring
+global fstrtostr                                ;; Converts fstring (or part of it) to a cstring
+global fstrfree                                 ;; Free the text and the object
 
 ;; Included C functions
 extern malloc
+extern free
 
 ;; Constants
-FSTR_STRUCT_SIZE EQU 32                         ;; How many bytes does the fstring_t data type takes
-FSTR_LENGTH_OFFSET EQU 0                        ;; By how many bytes from the start of the fstring is the length offsetted
-FSTR_ALLOC_LEN_OFFSET EQU 8                     ;; By how many bytes from the start of the fstring is the allocated length offsetted
-FSTR_TEXT_OFFSET EQU 16                         ;; By how many bytes from the start of the fstring is the text offsetted
+FSTR_STRUCT_SIZE        EQU 32                  ;; How many bytes does the fstring_t data type takes
+FSTR_LENGTH_OFFSET      EQU 0                   ;; By how many bytes from the start of the fstring is the length offsetted
+FSTR_ALLOC_LEN_OFFSET   EQU 8                   ;; By how many bytes from the start of the fstring is the allocated length offsetted
+FSTR_TEXT_OFFSET        EQU 16                  ;; By how many bytes from the start of the fstring is the text offsetted
 FSTR_ALLOC_START_OFFSET EQU 24                  ;; By how many bytes from the start of the fstring is the alloc_start offsetted
 
 ;; Global variables
@@ -44,13 +47,15 @@ section .text
 ;;
 ;; @note Malloc guarantees memory alignment (length) to be multiple of 16 (thus no need to do it manually)
 ;;
-fstrfromstr:            ;; TODO: Add the after padding to the alloc_length
+fstrfromstr:                                                                                            ;; TODO: Add the after padding to the alloc_length
         push rbp
         mov rbp, rsp
         push rdi                                ;; Save rdi (str) on stack for later use [rbp-8]
         sub rsp, 8                              ;; Space for local variables - start [rbp-16]
         and rsp, -16                            ;; Align stack
         
+        push rbx
+        push rsi
         ;; Stack frame end
 
         mov rdi, FSTR_STRUCT_SIZE               ;; Size of the fstring object (parameter for malloc)
@@ -77,12 +82,87 @@ fstrfromstr:            ;; TODO: Add the after padding to the alloc_length
         call fmemmove
 
         mov rax, qword[rbp-16]                  ;; Return the object
+        
         ;; Leave function
+        pop rsi
+        pop rbx
+
         mov rsp, rbp
         pop rbp
         ret
 ;; end fstrfromstr
 
+
+;; FSTRTOSTR 
+;; Converts part of the fstring to a newly allocated cstring
+;;
+;; @param
+;;      fstring *fstr   - RDI - FSTring
+;;      uint start      - RSI - Starting index
+;;      uint end        - RDX - End index
+;; @return Dynamically created cstring containing text from fstr passed in
+;; @code 
+;;      if(end > fstr->length)
+;;              end = fstr->length;
+;;      if(start > end)
+;;              start = 0;
+;;      char *str = malloc(end-start+1);
+;;      str = copy_str(&fstr->text[start], end-start);
+;;      str[end-start] = '\0'
+;;      return str;
+;; 
+fstrtostr:
+        cmp rdx, qword[rdi+FSTR_LENGTH_OFFSET]  ;; Check if the end is bigger than the string length
+        cmova rdx, qword[rdi+FSTR_LENGTH_OFFSET] ;; If end is bigger than length change end to length
+        cmp rsi, rdx                            ;; Check if starting index is bigger than the ending
+        jbe .fstrtostr_nabove                   ;; Start is not above end
+        xor rsi, rsi                            ;; If starting index is bigger than ending index, change it to 0
+.fstrtostr_nabove:
+        push rdi                                ;; Saving register because of malloc call
+        push rsi
+        push rdx
+
+        mov rdi, rdx                            ;; Calculate the needed length
+        sub rdi, rsi                            ;; Indexes are unsigned and rsi <= rdi
+        add rdi, 1                              ;; Size will be at least 1 for the \0 (note: add is better than inc)
+        call malloc                             ;; Allocate the space for the new cstring (RAX)
+        
+        pop rdx                                 ;; Recover register values before call
+        pop rsi
+        pop rdi
+
+        xchg rdi, rax                           ;; Move destination to RDI (RAX->fstr)
+        mov rcx, qword[rax+FSTR_TEXT_OFFSET]    ;; Move text pointer to the rcx
+        add rcx, rsi                            ;; Move starting index
+        mov rax, rdx                            ;; End index
+        sub rax, rsi                            ;; Get length
+        mov rsi, rcx                            ;; Set the source
+        mov rdx, rax                            ;; Set the length
+        call fmemumove                          ;; Copy the string (malloc for cstring was not aligned)
+        mov byte[rdi+rdx], 0                    ;; Add terminating 0
+
+        mov rax, rdi                            ;; Return the cstring
+        ;; Leave function
+        ret
+;; end fstrtostr
+
+
+;; FSTRFREE 
+;; Frees fstring from a memory
+;;
+;; @param
+;;      fstr    - RDI - FSTring
+;; @return no return
+fstrfree:
+        push rdi
+        mov rdi, qword[rdi+FSTR_TEXT_OFFSET]    ;; Find the text address
+        call free                               ;; Free the text
+        pop rdi
+        mov rdi, qword[rdi+FSTR_ALLOC_START_OFFSET] ;; Find the actuall object allocation start (unaligned)
+        call free
+        ;; Leave function
+        ret
+;; end fstrfree
 
 ;; CSTRLEN
 ;; Returns length of a CString
@@ -124,11 +204,31 @@ cstrlen:
 fmemmove:
         xor rax, rax
 .fmemmove_loop:
-        movups xmm0, [rsi+rax]                  ;; Load the memory (unaligned)
-        movaps [rdi+rax], xmm0                  ;; Save the memory (aligned)
+        movdqu xmm0, [rsi+rax]                  ;; Load the memory (unaligned)
+        movdqa [rdi+rax], xmm0                  ;; Save the memory (aligned)
         add rax, 16                             ;; Add to the index     
         cmp rax, rdx                            ;; Compare
         jb .fmemmove_loop
+
+        ret
+;; end fmemmove
+
+;; FMEMUMOVE
+;; Copies unaligned memory block with aligned length to another unaligned destination
+;;
+;; @param
+;;      dest    - RDI - Destination
+;;      src     - RSI - Source
+;;      len     - RDX - Length of the block
+;; @return no return (rax will be how many blocks were moved)
+fmemumove:
+        xor rax, rax
+.fmemumove_loop:
+        movdqu xmm0, [rsi+rax]                  ;; Load the memory (unaligned)
+        movdqu [rdi+rax], xmm0                  ;; Save the memory (unaligned)
+        add rax, 16                             ;; Add to the index     
+        cmp rax, rdx                            ;; Compare
+        jb .fmemumove_loop
 
         ret
 ;; end fmemmove
