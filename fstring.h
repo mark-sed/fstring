@@ -4,9 +4,10 @@
 #include <stdint.h>
 
 typedef struct{
-	uint64_t length;
-	uint64_t alloc_len;
-	char **text;
+	uint64_t length;    // Actual length of the text without the \0
+	uint64_t alloc_len; // Free allocated space after the text
+	char *text;		// text (use alloc_start when free and realloc)
+	void *alloc_start;  // Tells where the text actually starts (padding for alignmnet)
 } fstring;
 
 #define fstrlen //finish
