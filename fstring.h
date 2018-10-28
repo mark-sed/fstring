@@ -35,14 +35,15 @@ char *fstrtostr(fstring *fstr, unsigned int start, unsigned int end);
  * Smaže FSTring (uvolní paměť)
  */
 void fstrfree(fstring *fstr);
-#define _fstrtostr_free(cstr, fstr, start, end) do{cstr = fstrtostr(fstr, start, end); fstrfree(fstr)}while 0;
-
-#ifdef _ALL_DONE_
+#define _fstrtostr_free(cstr, fstr, start, end) do{cstr = fstrtostr(fstr, start, end); fstrfree(fstr);}while(0);
 
 /**
  * Rewrites FSTring
  */
-fstring *fstrset();
+void fstrset(fstring *fstr, char *str);
+#define _fstrfset(fstr, fstr_src) fstrset(fstr, fstr_get_str(fstr)) // TODO: Version for fstring (length doesnt have to be counted)
+
+#ifdef _ALL_DONE_
 
 /**
  * Appends text to the end of fstring
