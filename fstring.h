@@ -41,19 +41,22 @@ void fstrfree(fstring *fstr);
  * Rewrites FSTring
  */
 void fstrset(fstring *fstr, char *str);
-#define _fstrfset(fstr, fstr_src) fstrset(fstr, fstr_get_str(fstr)) // TODO: Version for fstring (length doesnt have to be counted)
+#define _fstrfset(fstr, fstr_src) fstrset(fstr, fstr_get_str(fstr_src)) // TODO: Version for fstring (length doesnt have to be counted)
 
-#ifdef _ALL_DONE_
+void fstrrealloc(fstring *fstr, unsigned long new_size);
 
 /**
  * Appends text to the end of fstring
  */
 void fstrappend(fstring *fstr, char *str);
+#define _fstrappend(fstr, fstr_src) fstrappend(fstr, fstr_get_str(fstr_src));
 
 /**
- * Převede řetězec na velká písmena
+ * Converts all letters to upper case
  */
-void fstr_to_upper(fstring *fstr, unsigned int start, unsigned int end);
+void fstr_to_upper(fstring *fstr, unsigned long start, unsigned long end);
+
+#ifdef _ALL_DONE_
 
 /**
  * Převede řetězec na malá písmena
