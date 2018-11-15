@@ -5,32 +5,35 @@
 int main(int argc, char *argv[]){
     char *str = "Hello, how's it going guys";
     fstring *fstr = fstrfromstr(str);
-    printf("%p\n%p\n%ld\n%ld\n'%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+    printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 
-	fstrappend(fstr, ". This was appended xD I added this for loooooooooool upe{}|_^&}se1!");
+	fstrappend(fstr, ". This was appended. And made uppercase!");
 
 	fstr_to_upper(fstr, 0, fstrlen(fstr));
 
-	printf("%p\n%p\n%ld\n%ld\n'%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+	printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 
 	fstrfree(fstr);
 
-	/*fstrset(fstr, "I changed :)AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-    printf("%p\n%p\n%ld\n%ld\n'%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
-	char *a = fstrtostr(fstr, 0, 20);
+	fstrset(fstr, "I changed :) 123456789abcdefghijklmnopqrstuvwxyz");
+
+    printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+
 	fstring *fstr2 = fstrfromstr(str);
-	printf("%s\n", fstr2->text);
+	
+	printf("FSTR FROM STR: %s -> %s\n", str, fstr2->text);
 
-	printf("'%s'\n", a);
+	char *a = fstrtostr(fstr, 0, 10);
 
-	fstrrealloc(fstr, 3000);
-	printf("REALLOCED: %p\n%p\n%ld\n%ld\n'%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+	printf("FSTR TO STR (0: 10) '%s' -> '%s'\n", fstr->text, a);
 	
 	char *b;
+
 	_fstrtostr_free(b, fstr, 0, 4);
-	printf("'%s'\n", b);
+	
+	printf("FREE + CONVERT (0, 4): '%s'\n", b);
 
 	free(a);
-	free(b);*/
+	free(b);
     return 0;
 }

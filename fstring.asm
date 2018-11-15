@@ -233,8 +233,9 @@ fstrset:
         mov rax, qword[rbp-8]                   ;; Get the fstr
         mov rdi, qword[rax+FSTR_TEXT_OFFSET]    ;; Set the text pointer as a 1st argument
         mov rsi, qword[rbp-16]                  ;; Set the cstring as a 2nd argument
-        mov rdx, qword[rax+FSTR_LENGTH_OFFSET]  ;; Set the length as a 3rd argument       
-        call fmemuamove                              ;; Move test from unaligned memory to aligned memory
+        mov rdx, qword[rax+FSTR_LENGTH_OFFSET]  ;; Set the length as a 3rd argument 
+        add rdx, 1                              ;; Get also the +1 for \0      
+        call fmemuamove                         ;; Move test from unaligned memory to aligned memory
         ;; Leaving function
         mov rsp, rbp
         pop rbp
