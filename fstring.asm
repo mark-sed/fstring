@@ -14,6 +14,9 @@ global fstrfree                                 ;; Free the text and the object
 global fstrset                                  ;; Sets text of a fstring
 global fstrappend                               ;; Appends string to the end of fstring
 global fstr_to_upper                            ;; Converts all letters to uppercase
+global fstr_to_lower                            ;; Converts all letters to lowercase
+global fstrcapitalize                           ;; Converts first letter (at index) to uppercase
+global fstr_find_first                          ;; Finds first appearance of an fstring in an fstring
 
 ;; Included C functions
 extern malloc
@@ -29,6 +32,8 @@ FSTR_ALLOC_START_OFFSET EQU 24                  ;; By how many bytes from the st
 
 ;; Global variables
 section .data
+__CONST_64_BYTE         dd  0x40_40_40_40, 0x40_40_40_40, 0x40_40_40_40, 0x40_40_40_40       ;; 4*Double filled with 64 on each byte
+__CONST_91_BYTE         dd  0x5B_5B_5B_5B, 0x5B_5B_5B_5B, 0x5B_5B_5B_5B, 0x5B_5B_5B_5B       ;; 4*Double filled with 91 on each byte
 __CONST_96_BYTE         dd  0x60_60_60_60, 0x60_60_60_60, 0x60_60_60_60, 0x60_60_60_60       ;; 4*Double filled with 96 on each byte
 __CONST_123_BYTE        dd  0x7B_7B_7B_7B, 0x7B_7B_7B_7B, 0x7B_7B_7B_7B, 0x7B_7B_7B_7B       ;; 4*Double filled with 123 on each byte
 __CONST_32_BYTE         dd  0x20_20_20_20, 0x20_20_20_20, 0x20_20_20_20, 0x20_20_20_20       ;; 4*Double filled with 32 on each byte
@@ -378,7 +383,6 @@ fstrrealloc:
 ;; @return No return
 ;; 
 fstr_to_upper:
-
         cmp rdx, qword[rdi+FSTR_LENGTH_OFFSET]  ;; Check if the end is bigger than the string length
         cmova rdx, qword[rdi+FSTR_LENGTH_OFFSET] ;; If end is bigger than length change end to length
         cmp rsi, rdx                            ;; Check if starting index is bigger than the ending
@@ -440,6 +444,162 @@ fstr_to_upper:
 .fstr_to_upper_loop_done:                       ;; Conversion is done
         ret
 ;; end fstr_to_upper
+
+
+;; FSTR_TO_LOWER 
+;; Converts letters to lowercase
+;;
+;; @param
+;;      fstring *fstr   - RDI - FSTring to convert
+;;      ulong start     - RSI - Starting index
+;;      ulong end       - RDX - Ending index
+;; @return No return
+;; 
+fstr_to_lower:
+        cmp rdx, qword[rdi+FSTR_LENGTH_OFFSET]  ;; Check if the end is bigger than the string length
+        cmova rdx, qword[rdi+FSTR_LENGTH_OFFSET] ;; If end is bigger than length change end to length
+        cmp rsi, rdx                            ;; Check if starting index is bigger than the ending
+        jbe .fstr_to_lower_nabove               ;; Start is not above end
+        xor rsi, rsi                            ;; If starting index is bigger than ending index, change it to 0
+.fstr_to_lower_nabove:
+
+        mov r8, qword[rdi+FSTR_TEXT_OFFSET]     ;; Get the text
+        add r8, rsi                             ;; Move to the starting index
+
+        mov rcx, rdx                            ;; Load end index
+        sub rcx, rsi                            ;; Calculate length
+        shr rcx, 4                              ;; Divide by 16, to find out the amount of possible SSE cycles
+        shl rcx, 4                              ;; Multiply by 16 (in adress cannot be *16)
+        
+.fstr_to_lower_sseloop:                         ;; SSE regs loop
+        test rcx, rcx                           ;; Check if RCX is 0
+        jz .fstr_to_lower_ssedone               ;; No more cycles can be done, abort
+        sub rcx, 16                             ;; Decrese counter
+        
+        movdqu xmm2, [__CONST_91_BYTE]          ;; Load 91 to all bytes
+        movdqu xmm1, [__CONST_64_BYTE]          ;; Load 64 into all bytes
+        movdqa xmm3, [r8+rcx]                   ;; Load from aligned memory 16 characters
+        movdqa xmm0, [r8+rcx]                   ;; Values are in cache, this should be faster than copying register
+        
+        pcmpgtb xmm3, xmm1                      ;; Check if characters are bigger than 64 (chars > 64). Mask saved in xmm0, because LT is not available
+        pcmpgtb xmm2, xmm0                      ;; Check if characters are less than 91 (91 > chars). Mask saved in xmm2
+        
+        andps xmm3, xmm2                        ;; Get mask where ones are there where both conditions meet
+        movdqu xmm2, [__CONST_32_BYTE]          ;; Load 32 to all bytes
+        andps xmm3, xmm2                        ;; Get 32 to all positive matches
+        xorps xmm0, xmm3                        ;; Xor lowercase letters with 32, changing them to uppercase
+        movdqa [r8+rcx], xmm0                   ;; Save back to the text      
+
+        jmp short .fstr_to_lower_sseloop        ;; While style loop
+.fstr_to_lower_ssedone:
+        mov rcx, rdx                            ;; Load end index
+        sub rcx, rsi                            ;; Calculate length
+        mov rax, rcx                            ;; Copy difference
+        shr rax, 4                              ;; Divide by 4
+        shl rax, 4                              ;; Multiply
+        sub rcx, rax                            ;; Get how many letters are left to be converted
+        
+        add r8, rax                             ;; Move text to the not yet converted part
+.fstr_to_lower_loop:
+        test rcx, rcx                           ;; Check if rcx is 0
+        jz .fstr_to_lower_loop_done             ;; If so, no more converting has to be done
+        sub rcx, 1                              ;; sub is better than dec
+
+        mov dl, byte[r8+rcx]                    ;; Get the current char
+        cmp dl, 64                              ;; Compare if bigger than 64
+        jbe .fstr_to_lower_loop                 ;; Get next char
+        cmp dl, 91                              ;; Compare if less than 91
+        jae .fstr_to_lower_loop                 ;; Get next char
+        xor dl, 32                              ;; Convert
+        mov byte[r8+rcx], dl                    ;; Save
+
+        jmp short .fstr_to_lower_loop           ;; While style loop
+.fstr_to_lower_loop_done:                       ;; Conversion is done
+        ret
+;; end fstr_to_lower
+
+
+;; FSTRCAPITALIZE
+;; Conversion specified letter to uppercase
+;; If start is out of bounds, it is set to max
+;;
+;; @param
+;;      fstring *fstr   - RDI - FSTring
+;;      ulong start     - RSI - Starting index
+;; @return No return
+;;
+fstrcapitalize:
+        cmp rsi, qword[rdi+FSTR_LENGTH_OFFSET]  ;; Compare index to max index
+        jb .fstrcapitalize_bellow               ;; Bellow length
+        mov rsi, qword[rdi+FSTR_LENGTH_OFFSET]  ;; If end is bigger than length change end to length
+        sub rsi, 1                              ;; Index = length-1 (at length is \0)
+.fstrcapitalize_bellow:
+        mov rdx, qword[rdi+FSTR_TEXT_OFFSET]    ;; Get the text
+        mov al, byte[rdx+rsi]                   ;; Move to the correct index and get byte
+                                                
+        cmp al, 96                              ;; Compare if bigger than 96
+        jbe .fstrcapitalize_done                ;; Skip
+        cmp al, 123                             ;; Compare if less than 123
+        jae .fstrcapitalize_done                ;; Skip
+        xor al, 32                              ;; Convert
+        mov byte[rdx+rsi], al                   ;; Save
+.fstrcapitalize_done:
+        ret
+;; end fstrcapitalize
+
+
+;; FSTR_FIND_FIRST
+;; Finds first appearance of an fstring in another fstring
+;; Indexes will be adjusted if they are of bounds
+;;
+;; @param
+;;      fstring *fstr   - RDI - Source where will be the string searched for
+;;      ulong start1    - RSI - Starting index of fstr
+;;      ulong end1      - RDX - Endind index of fstr
+;;      fstring *fstrsub- RCX - String which will be searched for
+;;      ulong start2    - R8  - Starting index of fstrsub
+;;      ulong end2      - R9  - Endind index of fstrsub
+;; @return ulong index where the first appearence starts (RAX) or length of 1st fstring if not substring was not found
+fstr_find_first:
+        push rbp
+        mov rbp, rsp
+        and rsp, -16
+        ;; Stack frame end
+
+        ;; Check bounds on 1st fstring
+        cmp rdx, qword[rdi+FSTR_LENGTH_OFFSET]  ;; Check if the end is bigger than the string length
+        cmova rdx, qword[rdi+FSTR_LENGTH_OFFSET] ;; If end is bigger than length change end to length (dont care for the ending \0)
+        cmp rsi, rdx                            ;; Check if starting index is bigger than the ending
+        jbe .fstr_find_first_nabove1            ;; Start is not above end
+        xor rsi, rsi                            ;; If starting index is bigger than ending index, change it to 0
+.fstr_find_first_nabove1:   
+
+        ;; Check bounds on 2nd fstring
+        cmp r8, qword[rcx+FSTR_LENGTH_OFFSET]   ;; Check if the end is bigger or same as the string length
+        jb .fstr_find_first_bellow2             ;; Skip change
+        mov r8, qword[rcx+FSTR_LENGTH_OFFSET]   ;; Set end1 to length
+        sub r8, 1                               ;; Subtract 1 (dont want the ending 0)
+.fstr_find_first_bellow2:                       ;; Is bellow length
+        cmp r9, r8                              ;; Check if starting index is bigger than the ending
+        jbe .fstr_find_first_nabove2            ;; Start is not above end
+        xor r9, r9                              ;; If starting index is bigger than ending index, change it to 0
+.fstr_find_first_nabove2:
+        
+        ;; Searching
+        
+
+        ;; NOTE: rax a rdx se musi menit za nacitani (je mozne mit tam length a odecitat 16 - melo by podle dokumentace)
+
+.fstr_find_first_loop:                          ;; Loop for searching
+        ;mov rax, rdx                            ;; Set the end of xmm0 as the end of the 1st fstring
+        ;mov rdx, r8                             ;; Set the end of xmm1 as the end of the 2nd fstring 
+
+.fstr_find_first_done:
+        ;; Leaving function
+        mov rsp, rbp
+        pop rbp
+        ret
+;; end fstr_find_first
 
 
 ;; CSTRLEN                            ;; TODO: Are string literals aligned in length as well?

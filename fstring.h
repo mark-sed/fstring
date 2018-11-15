@@ -35,38 +35,44 @@ char *fstrtostr(fstring *fstr, unsigned int start, unsigned int end);
  * Smaže FSTring (uvolní paměť)
  */
 void fstrfree(fstring *fstr);
-#define _fstrtostr_free(cstr, fstr, start, end) do{cstr = fstrtostr(fstr, start, end); fstrfree(fstr);}while(0);
+#define _fstrtostr_free(cstr, fstr, start, end) do{cstr = fstrtostr(fstr, start, end); fstrfree(fstr);}while(0)
 
 /**
  * Rewrites FSTring
  */
 void fstrset(fstring *fstr, char *str);
-#define _fstrfset(fstr, fstr_src) fstrset(fstr, fstr_get_str(fstr_src)) // TODO: Version for fstring (length doesnt have to be counted)
-
-void fstrrealloc(fstring *fstr, unsigned long new_size);
+#define _fstrfset(fstr, fstr_src) fstrset(fstr, fstr_get_str(fstr_src))
 
 /**
  * Appends text to the end of fstring
  */
 void fstrappend(fstring *fstr, char *str);
-#define _fstrappend(fstr, fstr_src) fstrappend(fstr, fstr_get_str(fstr_src));
+#define _fstrappend(fstr, fstr_src) fstrappend(fstr, fstr_get_str(fstr_src))
 
 /**
  * Converts all letters to upper case
  */
 void fstr_to_upper(fstring *fstr, unsigned long start, unsigned long end);
 
-#ifdef _ALL_DONE_
+/**
+ * Converts all letters to lowercase
+ */
+void fstr_to_lower(fstring *fstr, unsigned long start, unsigned long end);
 
 /**
- * Převede řetězec na malá písmena
+ * Capitalizes one letter
  */
-void fstr_to_lower(fstring *fstr, unsigned int start, unsigned int end);
+void fstrcapitalize(fstring *fstr, unsigned long start);
+#define _fstrcapitalize(fstr) fstrcapitalize(fstr, 0);
 
 /**
- * Vyhledá první výskyt podřetězce v řetězci
+ * Finds first appearance of an fstring in an fstring
  */
-fstr_find_last();
+unsigned long fstr_find_first(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
+
+#ifdef _ALL_DONE
+
+//TODO: ?? void fstr_switch_case(fstring *fstr, unsigned int start, unsigned int end);
 
 /**
  * Vyhledá poslední výskyt podřetězce v řetězci
@@ -96,11 +102,6 @@ fstrcopy();
  * spíše k analýze slov dle oddělovačů a poté jejich nakopírování
  */
 fstrsplit();
-
-/**
- * Zvětší pouze první písmeno
- */
-void fstrcapitalize(fstring *fstr, unsigned int start);
 
 /**
  * Vrací kolikrát se substring nachází ve stringu
