@@ -3,11 +3,15 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]){
-    char *str = "Hello, how's it going guys";
+    char *str = "ABCDEFGHIJKLMNOPQRSTUVQXYZ0123456789abcdefghijklmnopqrstuvwxyz";
     fstring *fstr = fstrfromstr(str);
     printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 
-	fstrappend(fstr, ". This was appended. And made uppercase. Later lowercase");
+	//fstrappend(fstr, ". This was appended. And made uppercase. Later lowercase");
+
+	fstrflip(fstr, 2, fstrlen(fstr)); // Nefunguje jak ma
+	printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+	/*
 
 	fstr_to_upper(fstr, 0, fstrlen(fstr));
 
@@ -47,5 +51,6 @@ int main(int argc, char *argv[]){
 
 	free(a);
 	free(b);
+	*/
     return 0;
 }

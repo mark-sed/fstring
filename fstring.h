@@ -13,12 +13,12 @@ typedef struct{
 /**
  * Returns length of a fstring text
  */
-#define fstrlen(fstr) fstr->length
+#define fstrlen(fstr) (fstr->length)
 
 /**
  * Accesses the string part of the object
  */
-#define fstr_get_str(fstr) fstr->text
+#define fstr_get_str(fstr) (fstr->text)
 
 /**
  * Konverze C stringu na FSTring
@@ -65,24 +65,15 @@ void fstr_to_lower(fstring *fstr, unsigned long start, unsigned long end);
 void fstrcapitalize(fstring *fstr, unsigned long start);
 #define _fstrcapitalize(fstr) fstrcapitalize(fstr, 0);
 
-/**
- * Finds first appearance of an fstring in an fstring
- */
-unsigned long fstr_find_first(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
-
-#ifdef _ALL_DONE
-
-//TODO: ?? void fstr_switch_case(fstring *fstr, unsigned int start, unsigned int end);
-
-/**
- * Vyhledá poslední výskyt podřetězce v řetězci
- */
-fstr_find_last();
 
 /**
  * Převrátí řetězec
  */
 void fstrflip(fstring *fstr, unsigned int start, unsigned int end);
+
+#ifdef _ALL_DONE
+
+//TODO: ?? void fstr_switch_case(fstring *fstr, unsigned int start, unsigned int end);
 
 /**
  * Nakopíruje string nebo FSTring do druhého FSTringu (posune znaky)
@@ -107,6 +98,16 @@ fstrsplit();
  * Vrací kolikrát se substring nachází ve stringu
  */ 
 fstrcount();
+
+/**
+ * Finds first appearance of an fstring in an fstring
+ */
+unsigned long fstr_find_first(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
+
+/**
+ * Vyhledá poslední výskyt podřetězce v řetězci
+ */
+fstr_find_last();
 #endif
 
 #endif//_FSTRING_H_
