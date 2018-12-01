@@ -578,47 +578,48 @@ fstrflip:
         sub rax, rsi                            ;; Find the length that is going to be changed
         mov rcx, rax                            ;; Copy the length
         xor r9, r9                              ;; Used as a counter
-        ;;????add r9, rsi
+        add r9, rsi                             ;; Move the starting index
         movdqu xmm2, [__CONST_FLIP]             ;; Load the indexes for shufb
+        add rcx, 1                              ;; Move the index by one
+        mov r10, r8
+        add r10, rsi
         shr rax, 5                              ;; Divide by 32 (xmm0+xmm1 sizes) to calculate how many cycles will be needed (sets ZF)
 .fstrflip_sse_loop:                             ;; Loop for sse instructions
-        jz fstrflip_sse_loop_done
+        jz .fstrflip_sse_loop_done
         
         sub rcx, 16                             ;; Move the address backwards 
 
-        movdqa xmm0, [r8+r9]                    ;; Load the starting not converted 16 letters
-        movdqu xmm1, [r8+rcx]                   ;; Load the last not converted 16 letters
+        movdqu xmm0, [r8+r9]                    ;; Load the starting not converted 16 letters
+        movdqu xmm1, [r10+rcx]                  ;; Load the last not converted 16 letters
         pshufb xmm0, xmm2                       ;; Rearrange bytes
         pshufb xmm1, xmm2                       ;; Rearrange bytes
-        movdqa [r8+r9], xmm1                    ;; Save the last as the first
-        movdqu [r8+rcx], xmm0                   ;; Save the first as the last
+        movdqu [r8+r9], xmm1                    ;; Save the last as the first
+        movdqu [r10+rcx], xmm0                  ;; Save the first as the last
                               
         add r9, 16                              ;; Move the address
         sub rax, 1                              ;; Sets the flags for jz later one
         jmp short .fstrflip_sse_loop            ;; Repeat vectorized while we can
 
-fstrflip_sse_loop_done:                         ;; End of vectorized flip
+.fstrflip_sse_loop_done:                        ;; End of vectorized flip
         ;; rcx contains the last not converted index
         ;; r9 contains the first not converted index
         mov rax, rcx                            ;; Get the last index
-        add r8, r9                              ;; Move the starting index
-        sub rax, r9                             ;; Get the amount of cycles, used as counter
-        jz .fstrflip_done
-        xor r9, r9                              ;; Used as counter
-        ;add rax, 1
+        add rax, rsi                            ;; Add starting index
+        mov r10, rcx                            ;; Get first starting
+        sub r10, r9                             ;; Subtract length
+        jz .fstrflip_done                       ;; No more needed to be flipped (length was multiple of 32)
 .fstrflip_loop:                                 ;; Loop for non vectorized flip
         sub rax, 1                              ;; Decrement by one
-        ;jz .fstrflip_done
-        cmp r9, rax
-        je .fstrflip_done                       ;; No more letters need converting
-
+        
         mov dl, byte[r8+r9]                     ;; Get the first not converted letter                    
         mov cl, byte[r8+rax]                    ;; Get the last not converted letter
         mov byte[r8+r9], cl                     ;; Save letter
         mov byte[r8+rax], dl                    ;; Save letter
 
         add r9, 1                               ;; Increas address
-        jmp short .fstrflip_loop                ;; While style loop
+        cmp r9, rax                             ;; Compare if the indexes have met
+        sub r10, 1
+        jnz .fstrflip_loop                      ;; No more letters need converting
 .fstrflip_done:                                 ;; All converted
         ret
 ;; end fstrflip

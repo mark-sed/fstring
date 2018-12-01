@@ -3,13 +3,13 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]){
-    char *str = "ABCDEFGHIJKLMNOPQRSTUVQXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+    char *str = "ABCD EFGHIJKLMNOPQRSTUVQXYZ0123456789abcdefghijklmnopqrstuvwxyz";
     fstring *fstr = fstrfromstr(str);
     printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 
 	//fstrappend(fstr, ". This was appended. And made uppercase. Later lowercase");
 
-	fstrflip(fstr, 2, fstrlen(fstr)); // Nefunguje jak ma
+	fstrflip(fstr, 5, fstrlen(fstr)); // Nefunguje jak ma
 	printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 	/*
 
