@@ -18,7 +18,9 @@ global fstr_to_lower                            ;; Converts all letters to lower
 global fstrcapitalize                           ;; Converts first letter (at index) to uppercase
 global fstrflip                                 ;; Flips string
 
+global fstrcopy                                 ;; Copies string into fstring at certain location
 global fstr_find_first                          ;; Finds first appearance of an fstring in an fstring
+global fstrsplit                                ;; Splits string into substrings by a separator
 
 ;; Included C functions
 extern malloc
@@ -625,6 +627,65 @@ fstrflip:
 ;; end fstrflip
 
 
+;; FSTRCOPY 
+;; Copies a string into fstring at certain location
+;;
+;; @param
+;;      fstring *fstr   - RDI - Fstring into which will be text copyed
+;;      uint start      - RSI - Starting index of copying (in fstring)
+;;      char *str       - RDX - String to copy
+;; @return No return
+fstrcopy:
+        mov r8, [rdi+FSTR_LENGTH_OFFSET]        ;; Get fstr length
+        ;sub r8, 1                               ;; Subtract one because of the \0
+        cmp rsi, r8                             ;; Check if starting index is bigger than the length-1
+        jbe .fstrcopy_nabove                    ;; Start is not above end
+        xor rsi, rsi                            ;; If starting index is bigger than ending index, change it to 0
+.fstrcopy_nabove:                               ;; Index is correct
+        
+        xchg rdi, rdx                           ;; Set string as argument strlen
+        call cstrlen                            ;; Get length of the string (RAX)
+        mov r10, rax                            ;; Save the length
+        sub r8, rsi                             ;; Get the changing length
+        cmp r8, r10                             ;; Compare lenghts
+        cmovb r10, r8                           ;; Store the lower length for later
+        shr rax, 4                              ;; Divide by 16 to get the amount of vectorized cycles
+        shr r8, 4                               ;; Also get the amount of possible vectorized cycles based on fstr length
+        cmp r8, rax                             ;; Compare
+        cmovb rax, r8                           ;; Set the max cycles to the lowest value 
+        xor rcx, rcx                            ;; Index
+        mov r9, [rdx+FSTR_TEXT_OFFSET]          ;; Load the fstring test
+        add r9, rsi                             ;; Offset the text
+.fstrcopy_sse_loop:                             ;; Vectorized loop
+        test rax, rax                           ;; Test if
+        jz .fstrcopy_sse_loop_end               ;; No more cycles
+        
+        movdqu xmm0, [rdi+rcx]                  ;; Load 16B pro string
+        movdqu [r9+rcx], xmm0                   ;; Save to the string 
+
+        add rcx, 16
+        sub rax, 1                              ;; Decrement counter
+        jmp short .fstrcopy_sse_loop            ;; While style loop
+.fstrcopy_sse_loop_end:
+        
+        add rdi, rcx                            ;; Shift string
+        add r9, rcx                             ;; Shift fstring
+        and r10, 0xF                            ;; Get the modulo after division by 16 of lower length
+        xor rcx, rcx                            ;; Zero out index
+.fstrcopy_loop:                                 ;; Non vectorized cycle
+        cmp rcx, r10                            ;; Compare if index == end
+        jz .fstrcopy_loop_end                   ;; All done
+
+        mov al, byte[rdi+rcx]                   ;; Load the character
+        mov byte[r9+rcx], al                    ;; Save the character
+        
+        add rcx, 1                              ;; Increase counter (add is better than inc on most processors)
+        jmp short .fstrcopy_loop                ;; While style loop
+.fstrcopy_loop_end:                             ;; All letter copied or end of fstr found
+        ret
+;; fstrcopy
+
+
 ;; FSTR_FIND_FIRST
 ;; Finds first appearance of an fstring in another fstring
 ;; Indexes will be adjusted if they are of bounds
@@ -641,6 +702,11 @@ fstr_find_first:
         push rbp
         mov rbp, rsp
         and rsp, -16
+        push r11
+        push r12
+        push r13
+        push r14
+        push r15
         ;; Stack frame end
 
         ;; Check bounds on 1st fstring
@@ -652,43 +718,141 @@ fstr_find_first:
 .fstr_find_first_nabove1:   
 
         ;; Check bounds on 2nd fstring
-        cmp r8, qword[rcx+FSTR_LENGTH_OFFSET]   ;; Check if the end is bigger or same as the string length
+        cmp r9, qword[rcx+FSTR_LENGTH_OFFSET]   ;; Check if the end is bigger or same as the string length
         jb .fstr_find_first_bellow2             ;; Skip change
-        mov r8, qword[rcx+FSTR_LENGTH_OFFSET]   ;; Set end1 to length
-        sub r8, 1                               ;; Subtract 1 (dont want the ending 0)
+        mov r9, qword[rcx+FSTR_LENGTH_OFFSET]   ;; Set end1 to length
+        ;sub r9, 1                               ;; Subtract 1 (dont want the ending 0)
 .fstr_find_first_bellow2:                       ;; Is bellow length
-        cmp r9, r8                              ;; Check if starting index is bigger than the ending
+        cmp r8, r9                              ;; Check if starting index is bigger than the ending
         jbe .fstr_find_first_nabove2            ;; Start is not above end
-        xor r9, r9                              ;; If starting index is bigger than ending index, change it to 0
+        xor r8, r8                              ;; If starting index is bigger than ending index, change it to 0
 .fstr_find_first_nabove2:
         
         ;; Searching
-        
-
-        ;; TODO: FINISH
-
-
         ;; NOTE: rax a rdx se musi menit za nacitani (je mozne mit tam length a odecitat 16 - melo by podle dokumentace)
+        xor r10, r10                            ;; Zero out first index
+        xor r11, r11                            ;; Zero out seconf index
 
+        mov r12, rdx                            ;; Get ending index
+        sub r12, rsi                            ;; Subtract starting = Length
+
+        mov r13, r9                             ;; Get ending index
+        sub r13, r8                             ;; Subtract starting = Length
+
+        mov r14, [rdi+FSTR_TEXT_OFFSET]         ;; Get the text of str
+        mov r15, [rcx+FSTR_TEXT_OFFSET]         ;; Get the text of substr
 .fstr_find_first_loop:                          ;; Loop for searching
-        ;mov rax, rdx                            ;; Set the end of xmm0 as the end of the 1st fstring
-        ;mov rdx, r8                             ;; Set the end of xmm1 as the end of the 2nd fstring 
+        mov rax, 15                             ;; Set the end of xmm0 as the end of the 1st fstring
+        mov rdx, r13                            ;; Set the end of xmm1 as the end of the 2nd fstring 
+
+        movdqu xmm0, [r14+r10]                  ;; Load 16 characters with offset (str)
+        movdqu xmm1, [r15+r11]                  ;; Load 16 characters (substr)
+        pcmpestri xmm0, xmm1, 0x2c              ;; Find starting match
+        ;mov rax, rcx
+
+        ;; DOESNT WORK 
+        ;; TODO: finish
+
+
+
+
+        ;;;;
 
 .fstr_find_first_done:
         ;; Leaving function
+        pop r15
+        pop r14
+        pop r13
+        pop r12
+        pop r11
         mov rsp, rbp
         pop rbp
         ret
 ;; end fstr_find_first
 
 
-;; CSTRLEN                            ;; TODO: Are string literals aligned in length as well?
+;; FSTRSPLIT 
+;; Splits string into substring by separator
+;;
+;; @params
+;;      fstring *fstr   - RDI - FSTring
+;;      char separator  - RSI - Separator
+;; @return char** (Dyn allocated array of string litrals)
+;; @code
+;;      int subst_am = 0;
+;;      int help_susbt_am = 0;
+;;      for(int i = 0; i < fstrlen(fstr); i++){      
+;;              if(fstr->text[i] == ' '){
+;;                      if(help_susbt_am == i){ // Skip trailing separators
+;;                              help_susbt_am = i+1;
+;;                              continue;
+;;                      } 
+;;                      help_susbt_am = i+1;
+;;                      subst_am++;
+;;              }
+;;      }
+;;      if(help_susbt_am < fstrlen(fstr))
+;;              subst_am++;
+;;
+;;      ret_arr = malloc(subst_am);
+;;      int free_i = 0;
+;;      int start_i = 0;
+;;      for(int i = 0; i < fstrlen(fstr); i++){
+;;              if(fstr[i] == separator){
+;;                      fstr[i] = '\0';
+;;                      if(start_i == i){ // Skip trailing separators
+;;                              start_i = i+1;
+;;                              continue;
+;;                      }
+;;                      ret_arr[free_i] = start_i; 
+;;                      free_i++;
+;;                      start_i = i+1;
+;;              }
+;;      }
+fstrsplit:
+        push rbp
+        mov rbp, rsp
+        and rsp, -16
+        push rbx
+        ;; Stack frame end
+
+        mov rdx, [rdi+FSTR_LENGTH_OFFSET]       ;; Load the length of the string
+        xor rcx, rcx                            ;; Zero out the counter
+        mov rbx, [rdi+FSTR_TEXT_OFFSET]         ;; Load the text
+       
+%assign i 0
+%rep 16
+        pinsrb xmm1, esi, i                     ;; Load the seperator to each byte
+%assign i i+1
+%endrep
+
+.fstrsplit_loop1:
+        cmp rcx, rdx                            ;; Compare counter and length
+        jae .fstrsplit_loop1_end                ;; Exit cycle if counter is bigger or equal to the length of the string
+        
+        movdqa xmm2, [rbx+rcx]                  ;; Load 16 letters
+        pcmpeqb xmm2, xmm1                      ;; Compare each byte if there is separator (mask is in xmm2)
+
+        ;; Problem: kdyz je vic separatoru vedle sebe, nelze lehce spocitat vektorizovane   
+
+        add rcx, 16                             ;; Increase counter (add i better than inc on most processors)        
+        jmp short .fstrsplit_loop1              ;; While style loop (compare is at the start)
+.fstrsplit_loop1_end:
+        
+        ;; Leaving function
+        pop rbx
+        mov rsp, rbp
+        pop rbp
+        ret
+;; fstrsplit
+
+
+;; CSTRLEN
 ;; Returns length of a CString
 ;; 
 ;; @param
 ;;      - RDI - CString
 ;; @return length of a cstring
-;;
 cstrlen:
         xor rax, rax                            ;; Clear rax
         jmp short .cstrlen_frst

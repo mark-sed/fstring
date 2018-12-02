@@ -67,9 +67,33 @@ void fstrcapitalize(fstring *fstr, unsigned long start);
 
 
 /**
- * Převrátí řetězec
+ * Flips fstring
  */
 void fstrflip(fstring *fstr, unsigned int start, unsigned int end);
+
+/**
+ * Finds first appearance of an fstring in an fstring
+ */
+// TODO: FINISH
+unsigned long fstr_find_first(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
+#define _fstr_find_first(fstr, substr) fstr_find_first(fstr, 0, fstrlen(fstr), substr, 0, fstrlen(substr));
+
+/**
+ * Splits FSTring by character and saves substring to a newly allocated array of string literals
+ * Passed in FSTring will contain the first element (see note why)
+ * Once the passed in FSTring is changed the array is changed as well, thus it is better to
+ * make a copy of the fstring if you plan on using it later on, but this makes the
+ * freeing process lot easier, just call fstrfree and free the returned pointer
+ *
+ * @Note the substrings will be just pointers into the FSTring in which the separator will be
+ * exchanged for \0, thus making it easy for 
+ */
+char **fstrsplit(fstring *fstr, char separator, unsigned long *amount); // TODO: Finish
+
+/**
+ * Copies string into fstring into a certain position
+ */
+void fstrcopy(fstring *fstr, unsigned long start, char *str);
 
 #ifdef _ALL_DONE
 
@@ -80,29 +104,11 @@ void fstrflip(fstring *fstr, unsigned int start, unsigned int end);
  */
 fstrinsert();
 
-/**
- * Nakopíruje string nebo FSTring do druhého FSTringu (přepíše znaky)
- */
-fstrcopy();
-
-/**
- * Rozdělí FSTring podle oddělovacího znaku na podřetězce (literály) a ty uloží do pole
- *
- * @note Oddělovací znak je nahrazen koncovou nulou a ukazatel na začátek slova před tímto znakem
- * je uložen do pole, přepsáním je tedy přepsán i samotný FSTring, tato funkce ale má sloužit
- * spíše k analýze slov dle oddělovačů a poté jejich nakopírování
- */
-fstrsplit();
 
 /**
  * Vrací kolikrát se substring nachází ve stringu
  */ 
 fstrcount();
-
-/**
- * Finds first appearance of an fstring in an fstring
- */
-unsigned long fstr_find_first(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
 
 /**
  * Vyhledá poslední výskyt podřetězce v řetězci
