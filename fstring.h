@@ -72,6 +72,16 @@ void fstrcapitalize(fstring *fstr, unsigned long start);
 void fstrflip(fstring *fstr, unsigned int start, unsigned int end);
 
 /**
+ * Copies string into fstring into a certain position
+ */
+void fstrcopy(fstring *fstr, unsigned long start, char *str);
+
+/**
+ * Inserts string into fstring at certain position
+ */
+void fstrinsert(fstring *fstr, unsigned long start, char *str);
+
+/**
  * Finds first appearance of an fstring in an fstring
  */
 // TODO: FINISH
@@ -88,21 +98,13 @@ unsigned long fstr_find_first(fstring *fstr, unsigned long start1, unsigned long
  * @Note the substrings will be just pointers into the FSTring in which the separator will be
  * exchanged for \0, thus making it easy for 
  */
+// TODO: Finish
 char **fstrsplit(fstring *fstr, char separator, unsigned long *amount); // TODO: Finish
 
-/**
- * Copies string into fstring into a certain position
- */
-void fstrcopy(fstring *fstr, unsigned long start, char *str);
 
 #ifdef _ALL_DONE
 
 //TODO: ?? void fstr_switch_case(fstring *fstr, unsigned int start, unsigned int end);
-
-/**
- * Nakopíruje string nebo FSTring do druhého FSTringu (posune znaky)
- */
-fstrinsert();
 
 
 /**

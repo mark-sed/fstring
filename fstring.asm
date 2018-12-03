@@ -17,8 +17,9 @@ global fstr_to_upper                            ;; Converts all letters to upper
 global fstr_to_lower                            ;; Converts all letters to lowercase
 global fstrcapitalize                           ;; Converts first letter (at index) to uppercase
 global fstrflip                                 ;; Flips string
-
 global fstrcopy                                 ;; Copies string into fstring at certain location
+global fstrinsert                               ;; Inserts string into fstring at certain location
+
 global fstr_find_first                          ;; Finds first appearance of an fstring in an fstring
 global fstrsplit                                ;; Splits string into substrings by a separator
 
@@ -283,6 +284,7 @@ fstrappend:
         call cstrlen                            ;; Calculate length of appending string (RAX)
         mov r12, rax                            ;; Save length of cstring
 
+.fstrappend_realloc_loop:
         mov r15, qword[r14+FSTR_LENGTH_OFFSET]  ;; Get fstring length
         add r15, rax                            ;; fstr->length+length(str)
         mov rdx, qword[r14+FSTR_ALLOC_LEN_OFFSET] ;; Get alloc length
@@ -296,6 +298,8 @@ fstrappend:
         add rsi, 15                             ;; Add 15 for alignment of length
         and rsi, -16                            ;; Align length
         call fstrrealloc                        ;; Reallocate fstring
+        
+        jmp short .fstrappend_realloc_loop      ;; Check if it fits now
 
 .fstrappend_fits:                               ;; String fits now
         
@@ -637,8 +641,7 @@ fstrflip:
 ;; @return No return
 fstrcopy:
         mov r8, [rdi+FSTR_LENGTH_OFFSET]        ;; Get fstr length
-        ;sub r8, 1                               ;; Subtract one because of the \0
-        cmp rsi, r8                             ;; Check if starting index is bigger than the length-1
+        cmp rsi, r8                             ;; Check if starting index is bigger than the length
         jbe .fstrcopy_nabove                    ;; Start is not above end
         xor rsi, rsi                            ;; If starting index is bigger than ending index, change it to 0
 .fstrcopy_nabove:                               ;; Index is correct
@@ -684,6 +687,82 @@ fstrcopy:
 .fstrcopy_loop_end:                             ;; All letter copied or end of fstr found
         ret
 ;; fstrcopy
+
+
+;; FSTRINSERT 
+;; Inserts a string into fstring at certain location
+;;
+;; @param
+;;      fstring *fstr   - RDI - Fstring into which will be text inserted
+;;      uint start      - RSI - Starting index of insert (in fstring)
+;;      char *str       - RDX - String to insert
+;; @return No return
+fstrinsert:
+        push rbp                                ;; Stack frame because of possible call to realloc
+        mov rbp, rsp
+        and rsp, -16
+        ;; Stack frame end
+
+        mov r8, [rdi+FSTR_LENGTH_OFFSET]        ;; Get fstr length
+        cmp rsi, r8                             ;; Check if starting index is bigger than the length
+        jbe .fstrinsert_nabove                  ;; Start is not above end
+        xor rsi, rsi                            ;; If starting index is bigger than length, change it to 0
+.fstrinsert_nabove:                             ;; Index is correct 
+        
+        xchg rdi, rdx                           ;; Set string as parameter to cstrlen
+        call cstrlen                            ;; Get the length of str (RAX)
+        mov r10, rax                            ;; Copy length of str
+        mov r9, [rdx+FSTR_ALLOC_LEN_OFFSET]     ;; Get the whole allocated length
+        add rax, r8                             ;; Add the length of fstring
+        add rax, 1                              ;; Add one for \0
+        cmp rax, r9                             ;; Check if the string fits or reallocation is needed
+        jna .fstrinsert_fits                    ;; Skip realloc
+        
+        push rdi                                ;; Save later needed registers
+        push rsi
+        push rdx
+        push r8
+        push r10
+
+        mov rdi, rdx                            ;; Set fstring as parameter
+        mov rsi, r9                             ;; Set the current alloc length as new length
+        shl rsi, 1                              ;; Multiply length by 2
+        add rsi, 15                             ;; Add 15 for alignment of length
+        and rsi, -16                            ;; Align length
+
+        add rax, 15
+        and rax, -16                            ;; Align precise length as well
+        cmp rax, rsi                            ;; Compare lengths to use the bigger one
+        cmova rsi, rax                          ;; If precise aligned length is bigger then multiple of 2, then set it as argument
+
+        call fstrrealloc
+
+        pop r10
+        pop r8
+        pop rdx
+        pop rsi
+        pop rdi                                 ;; Restore registers after call
+.fstrinsert_fits:                               ;; String now can be inserted
+
+        mov rax, qword[rdx+FSTR_TEXT_OFFSET]    ;; Load the text
+       ; mov r11, qword[rdx+FSTR_TEXT_OFFSET]    ;; Faster because it is in cache and pipelining doesn't need to wait for previous instruction to finish
+       ; add rax, rsi                            ;; Add offset
+       ; mov r11, rax                            ;; Copy
+       ; add r11, r10                            ;; Add the length of inserted string
+
+       ; mov rcx, r8                             ;; Set the index (length of fstring)
+
+.fstrinsert_move_sse_loop:                      ;; Vectorized cycles
+
+       ; movdqu xmm0, [rax+rcx]                  ;; Load last bytes
+       ; movdqu [r11+rcx], xmm0                  ;; Save the bytes
+        ;;; FINISH     
+
+        ;; Leaving function
+        mov rsp, rbp
+        pop rbp
+        ret
+;; fstrinsert
 
 
 ;; FSTR_FIND_FIRST

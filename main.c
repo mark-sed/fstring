@@ -9,6 +9,9 @@ int main(int argc, char *argv[]){
 
 	fstrcopy(fstr, 2, "--INJECTED--");
 	printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+
+	fstrinsert(fstr, 2, "--INJECTED--");
+	printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 	/*unsigned long am = 0;
 	char **words = fstrsplit(fstr, ' ', &am);
 	for(int i = 0; i < am; i++){
