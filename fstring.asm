@@ -1,5 +1,5 @@
 ;; FSTring module.
-;; A module for easy and fast working with a string
+;; A module for easy and fast work with a string
 ;;
 ;; @author Marek Sedlacek, (xsedla1b)
 ;; @date October 2018
@@ -66,7 +66,7 @@ section .text
 ;;
 ;; @note Malloc guarantees memory alignment (length) to be multiple of 16 (thus no need to do it manually)
 ;;
-fstrfromstr:                                                                                            ;; TODO: Add the after padding to the alloc_length
+fstrfromstr:
         push rbp
         mov rbp, rsp
         push rdi                                ;; Save rdi (str) on stack for later use [rbp-8]
@@ -745,18 +745,16 @@ fstrinsert:
 .fstrinsert_fits:                               ;; String now can be inserted
 
         mov rax, qword[rdx+FSTR_TEXT_OFFSET]    ;; Load the text
-       ; mov r11, qword[rdx+FSTR_TEXT_OFFSET]    ;; Faster because it is in cache and pipelining doesn't need to wait for previous instruction to finish
-       ; add rax, rsi                            ;; Add offset
-       ; mov r11, rax                            ;; Copy
-       ; add r11, r10                            ;; Add the length of inserted string
+        mov r11, qword[rdx+FSTR_TEXT_OFFSET]    ;; Faster because it is in cache and pipelining doesn't need to wait for previous instruction to finish
 
-       ; mov rcx, r8                             ;; Set the index (length of fstring)
-
+        ;; Vezmu si do xmm poslednich 16 bytu fstringu (xmm = [[rdx+TEXT_OFF] + [rdx+LENGTH_OFF] - 16])
+        ;; Ulozim je na konec_fstringu - 16*pocet_cyklu + delka_vkladaneho
+        ;; Zbytek co nejde vektorizovane se udela po jednom stejne
+        ;; Ted se tam str jen nakopiruje (volani fstrcopy?)
 .fstrinsert_move_sse_loop:                      ;; Vectorized cycles
 
-       ; movdqu xmm0, [rax+rcx]                  ;; Load last bytes
-       ; movdqu [r11+rcx], xmm0                  ;; Save the bytes
-        ;;; FINISH     
+        ;;; FINISH
+
 
         ;; Leaving function
         mov rsp, rbp
@@ -831,9 +829,8 @@ fstr_find_first:
 
         ;; DOESNT WORK 
         ;; TODO: finish
-
-
-
+        
+        ;; CHECK: append
 
         ;;;;
 
