@@ -6,14 +6,17 @@ int main(int argc, char *argv[]){
     char *str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     fstring *fstr = fstrfromstr(str);
     printf("\nfstrfromstr(%s)\n", str);
-    printf("%s\n", fstr_get_str(fstr));
-    //printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+    //printf("%s\n", fstr_get_str(fstr));
+    printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 
-	printf("\nfstcopy(fstr, 2, --INJECTED--)\n");
-	fstrcopy(fstr, 2, "--INJECTED--");
-	printf("%s\n", fstr_get_str(fstr));
-	//printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+	//fstrappend(fstr, ". I appended this");
 
+	printf("\nfstrinsert(fstr, 2, --INJECTED--)\n");
+	fstrinsert(fstr, 2, "--INJECTED--");
+	//printf("%s\n", fstr_get_str(fstr));
+	printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+
+	
 	//fstrinsert(fstr, 2, "--INJECTED--");
 	//printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 	/*unsigned long am = 0;
@@ -26,7 +29,7 @@ int main(int argc, char *argv[]){
 	//printf("%p: %p: %ld: %ld: '%s'\n", fsub, fsub->alloc_start, fsub->alloc_len, fstrlen(fsub), fstr_get_str(fsub));
 	//unsigned long index = _fstr_find_first(fstr, fsub);
 	//printf("Found at: %lu\n", index);
-	
+	/*
 	printf("\nfstrflip(fstr, 5, fstrlen(fstr))\n");
 	fstrflip(fstr, 5, fstrlen(fstr)); 
 	printf("%s\n", fstr_get_str(fstr));
@@ -82,6 +85,6 @@ int main(int argc, char *argv[]){
 
 	free(a);
 	free(b);
-	
+	*/
     return 0;
 }

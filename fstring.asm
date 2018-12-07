@@ -310,7 +310,8 @@ fstrappend:
         mov rdx, r12                            ;; Set length to length of str
         call fmemuumove                         ;; Both addresses are unaligned, append
 
-        mov qword[r14+FSTR_LENGTH_OFFSET], r15  ;; Set length to a new length
+        add r12, r15                            ;; Add previous length to appended str length
+        mov qword[r14+FSTR_LENGTH_OFFSET], r12  ;; Set length to a new length
 
         ;; Leaving function
         pop r15
@@ -701,6 +702,9 @@ fstrinsert:
         push rbp                                ;; Stack frame because of possible call to realloc
         mov rbp, rsp
         and rsp, -16
+        push r11
+        push r12
+        push rbx
         ;; Stack frame end
 
         mov r8, [rdi+FSTR_LENGTH_OFFSET]        ;; Get fstr length
@@ -745,18 +749,45 @@ fstrinsert:
 .fstrinsert_fits:                               ;; String now can be inserted
 
         mov rax, qword[rdx+FSTR_TEXT_OFFSET]    ;; Load the text
-        mov r11, qword[rdx+FSTR_TEXT_OFFSET]    ;; Faster because it is in cache and pipelining doesn't need to wait for previous instruction to finish
+        mov rcx, qword[rdx+FSTR_LENGTH_OFFSET]  ;; Get the length
+        mov r12, rcx                            ;; Copy length
+        add r12, r10                            ;; Add inserted string length
+        add r10, rcx                            ;; Set the index
+        mov r11, rcx                            ;; Copy length of fstring
+        sub r11, rsi                            ;; Subtract starting index
+        mov r9, r11                             ;; Copy length that is going to be moved
+        and r9, 0xF                             ;; Get modulo after division by 16
+        shr r11, 4                              ;; Divide by 16
 
-        ;; Vezmu si do xmm poslednich 16 bytu fstringu (xmm = [[rdx+TEXT_OFF] + [rdx+LENGTH_OFF] - 16])
-        ;; Ulozim je na konec_fstringu - 16*pocet_cyklu + delka_vkladaneho
-        ;; Zbytek co nejde vektorizovane se udela po jednom stejne
-        ;; Ted se tam str jen nakopiruje (volani fstrcopy?)
 .fstrinsert_move_sse_loop:                      ;; Vectorized cycles
+        test r11, r11                           ;; Test is cycle counter is 0
+        jz .fstrinsert_move_sse_loop_done       ;; No more cycles
+        sub r11, 1                              ;; Decrement cycle counter
+        sub rcx, 16                             ;; Decrease counter
+        sub r10, 16                             ;; Decrease second counter
+        movdqu xmm0, [rax+rcx]                  ;; Load last bytes
+        movdqu [rax+r10], xmm0                  ;; Save bytes into the last bytes
+        jmp short .fstrinsert_move_sse_loop     ;; While style loop
+.fstrinsert_move_sse_loop_done:                 ;; SSE loop is done
 
-        ;;; FINISH
-
+.fstrinsert_move_loop:                          ;; Non vectorized loop
+        test r9, r9                             ;; Check if cycle counter is 0
+        jz .fstrinsert_move_loop_done           ;; No more cycles needed
+        sub r9, 1                               ;; Decrement counter
+        sub rcx, 1                              ;; Decrement pointer index
+        sub r10, 1                              ;; Decrement the other pointer index
+        mov bl, byte[rax+rcx]                   ;; Load character
+        mov byte[rax+r10], bl                   ;; Save the character
+        jmp short .fstrinsert_move_loop         ;; While style loop
+.fstrinsert_move_loop_done:                     ;; All letters moved
+        mov [rdx+FSTR_LENGTH_OFFSET], r12       ;; Save the new length
+        xchg rdi, rdx                           ;; Set the fstr as 1st argument for fstrcopy
+        call fstrcopy                           ;; Copy the string
 
         ;; Leaving function
+        pop rbx
+        pop r12
+        pop r11
         mov rsp, rbp
         pop rbp
         ret
