@@ -810,6 +810,7 @@ fstr_find_first:
         push rbp
         mov rbp, rsp
         and rsp, -16
+        push rbx
         push r11
         push r12
         push r13
@@ -835,43 +836,104 @@ fstr_find_first:
         jbe .fstr_find_first_nabove2            ;; Start is not above end
         xor r8, r8                              ;; If starting index is bigger than ending index, change it to 0
 .fstr_find_first_nabove2:
-        
-        ;; Searching
-        ;; NOTE: rax a rdx se musi menit za nacitani (je mozne mit tam length a odecitat 16 - melo by podle dokumentace)
         xor r10, r10                            ;; Zero out first index
         xor r11, r11                            ;; Zero out seconf index
 
         mov r12, rdx                            ;; Get ending index
-        sub r12, rsi                            ;; Subtract starting = Length
+        sub r12, rsi                            ;; Subtract starting = Length - fstr
 
         mov r13, r9                             ;; Get ending index
-        sub r13, r8                             ;; Subtract starting = Length
+        sub r13, r8                             ;; Subtract starting = Length - substr
+
+        cmp r13, r12                            ;; Compare if substring isnt longer
+        cmova rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr if substr wasn't found
+        ja .fstr_find_first_end                 ;; Cannot be found if substring is longer than fstring
 
         mov r14, [rdi+FSTR_TEXT_OFFSET]         ;; Get the text of str
         mov r15, [rcx+FSTR_TEXT_OFFSET]         ;; Get the text of substr
-.fstr_find_first_loop:                          ;; Loop for searching
-        mov rax, 15                             ;; Set the end of xmm0 as the end of the 1st fstring
-        mov rdx, r13                            ;; Set the end of xmm1 as the end of the 2nd fstring 
-
-        movdqu xmm0, [r14+r10]                  ;; Load 16 characters with offset (str)
-        movdqu xmm1, [r15+r11]                  ;; Load 16 characters (substr)
-        pcmpestri xmm0, xmm1, 0x2c              ;; Find starting match
-        ;mov rax, rcx
-
-        ;; DOESNT WORK 
-        ;; TODO: finish
         
-        ;; CHECK: append
+        mov rbx, r12                            ;; Copy length of the 1st fstring
+        add rbx, 15                             ;; Align the length to be multiple of 16
+        and rbx, -16                            ;; We need multiple of 16, because even then last x (where x < 16)
+                                                ;;   bytes can be loaded into xmm because of the size alignment
+        shr rbx, 4                              ;; Divide by 16 to get the amount of cycles
+        test rbx, rbx                           ;; Test if cycle counter is 0
+        cmovz rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr if substr wasn't found 
+        jz .fstr_find_first_end                 ;; Skip to the end
 
-        ;;;;
+        mov rax, r13                            ;; Set the end of xmm as the end of the 2nd fstring
 
-.fstr_find_first_done:
+.fstr_find_first_loop:                          ;; Loop for searching for first match in main string (substr doesn't move)
+        sub rbx, 1                              ;; Decrement cycle counter
+        mov rdx, r12                            ;; Set the end of xmm as the end of the 1st fstring 
+
+        movdqu xmm2, [r14+r10]                  ;; Load 16 characters with offset (str)
+        movdqu xmm1, [r15+r11]                  ;; Load 16 characters (substr)
+        pcmpestri xmm1, xmm2, 0x0C              ;; Find starting match
+
+        sub rdx, 16                             ;; Shorten the length
+        add r10, 16                             ;; Move index
+        
+        test rbx, rbx                           ;; Test if cycle counter is 0
+        jz .fstr_find_first_loop_done           ;; End loop
+        cmp rcx, 16                             ;; Check if the value is 16
+        je .fstr_find_first_loop                ;; If rcx is 16 repeat
+        jmp short .fstr_find_first_loop_done_test ;; Skip the same check
+.fstr_find_first_loop_done:
+        cmp rcx, 16                           ;; Check if the value is 16 if this was
+        cmove rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr if substr wasn't found 
+        je .fstr_find_first_end                 ;; Skip to the end
+
+.fstr_find_first_loop_done_test:                ;; Test other characters of susbtring
+        push rdx                                ;; Save counters
+        push rax
+        push r10
+
+        mov r9, r10                             ;; Get the current found index to be returned
+        sub r9, 16                              ;; 16 was added after the found
+        add r9, rcx                             ;; Add the index where the match was found
+
+        mov r8, rax                             ;; Copy length of substring
+        add r8, 15                              ;; Make it multiple of 16
+        and r8, -16                             ;; Make it multiple of 16
+        shr r8, 4                               ;; Divide by 16 - Counter of cycles
+        
+        mov r10, r9                             ;; Move start to the found index
+        sub rdx, rcx                            ;; Remove previous shift from length
+
+.fstr_find_first_loop2:                         ;; Cycling through string and substring as well
+        test r8, r8                             ;; Check if cycle counter isn't zero
+        cmovz rax, r9                           ;; If all cycles were done, set return value to the found index 
+        jz .fstr_find_first_found               ;; Move to the end of function
+        movdqu xmm1, [r15+r11]                  ;; Load offsetted substring
+        movdqu xmm2, [r14+r10]                  ;; Load offsetted string
+        pcmpestri xmm1, xmm2, 0x0C              ;; Compare if they still match
+
+        sub rdx, 16                             ;; Decrement length
+        sub rax, 16                             ;; Decrement substr length
+        add r10, 16                             ;; Increase index of string
+        add r11, 16                             ;; Increade index of substring
+        sub r8, 1                               ;; Decrement cycle counter
+
+        cmp rcx, 16                             ;; Check if the value is 16
+        jne .fstr_find_first_loop2              ;; If not, then they still match
+
+        pop r10                                 ;; Substr was not found
+        pop rax                                 ;; Restore previous values
+        pop rdx
+        jmp near .fstr_find_first_loop          ;; Return to previous cycle
+
+.fstr_find_first_found:                         ;; Substring was found
+        add rsp, 24                             ;; Remove stored values
+
+.fstr_find_first_end:                           ;; End of the function
         ;; Leaving function
         pop r15
         pop r14
         pop r13
         pop r12
         pop r11
+        pop rbx
         mov rsp, rbp
         pop rbp
         ret

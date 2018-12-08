@@ -11,10 +11,10 @@ int main(int argc, char *argv[]){
 
 	//fstrappend(fstr, ". I appended this");
 
-	printf("\nfstrinsert(fstr, 2, --INJECTED--)\n");
-	fstrinsert(fstr, 2, "--INJECTED--");
+	//printf("\nfstrinsert(fstr, 2, --INJECTED--)\n");
+	//fstrinsert(fstr, 2, "--INJECTED--");
 	//printf("%s\n", fstr_get_str(fstr));
-	printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+	//printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 
 	
 	//fstrinsert(fstr, 2, "--INJECTED--");
@@ -25,10 +25,10 @@ int main(int argc, char *argv[]){
 		printf("%02d %s\n", (i+1), words[i]);
 	}*/
 
-	//fstring *fsub = fstrfromstr("CDEFGHIJ");
-	//printf("%p: %p: %ld: %ld: '%s'\n", fsub, fsub->alloc_start, fsub->alloc_len, fstrlen(fsub), fstr_get_str(fsub));
-	//unsigned long index = _fstr_find_first(fstr, fsub);
-	//printf("Found at: %lu\n", index);
+	fstring *fsub = fstrfromstr("ijkl");
+	printf("%p: %p: %ld: %ld: '%s'\n", fsub, fsub->alloc_start, fsub->alloc_len, fstrlen(fsub), fstr_get_str(fsub));
+	unsigned long index = _fstr_find_first(fstr, fsub);
+	printf("Found at: %lu\n", index);
 	/*
 	printf("\nfstrflip(fstr, 5, fstrlen(fstr))\n");
 	fstrflip(fstr, 5, fstrlen(fstr)); 
