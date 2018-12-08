@@ -1,0 +1,2 @@
+Make constants aligned
+Dont use counters in simd loops but FLAGS

@@ -96,7 +96,8 @@ unsigned long fstr_find_last(fstring *fstr, unsigned long start1, unsigned long 
 /**
  * Returns how many times is a fstring (substring) contained in a fstring
  */ 
-unsigned long fstrcount(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
+unsigned long fstrcount(fstring *fstr, unsigned long start, unsigned long end, char symbol);
+#define _fstrcount(fstr, symbol) fstrcount(fstr, 0, fstrlen(fstr), symbol);
 
 /**
  * Splits FSTring by character and saves substring to a newly allocated array of string literals

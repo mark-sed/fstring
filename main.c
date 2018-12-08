@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]){
-    char *str = "ABCDEFGHIJ|KLMNOPQRSTUVWXYZabcdefghijk|lmnopqrs|tuvwxyz";
+    char *str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     fstring *fstr = fstrfromstr(str);
     printf("\nfstrfromstr(\"%s\")\n", str);
     //printf("%s\n", fstr_get_str(fstr));
@@ -33,6 +33,9 @@ int main(int argc, char *argv[]){
 
 	index = fstr_find_last(fstr, 11, 10000, fsub, 0, 1);
 	printf("Found last at: %lu\n", index);
+
+	index = fstrcount(fstr, 0, fstrlen(fstr), 'a');
+	printf("Count (a): %lu\n", index);
 	/*
 	printf("\nfstrflip(fstr, 5, fstrlen(fstr))\n");
 	fstrflip(fstr, 5, fstrlen(fstr)); 

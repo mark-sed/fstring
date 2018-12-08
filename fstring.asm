@@ -21,6 +21,7 @@ global fstrcopy                                 ;; Copies string into fstring at
 global fstrinsert                               ;; Inserts string into fstring at certain location
 global fstr_find_first                          ;; Finds first appearance of an fstring in an fstring
 global fstr_find_last                           ;; Finds last appearance of an fstring in an fstring
+global fstrcount                                ;; Counts how many times is a substring contained in a string
 
 global fstrsplit                                ;; Splits string into substrings by a separator
 
@@ -45,6 +46,7 @@ __CONST_123_BYTE        dd  0x7B_7B_7B_7B, 0x7B_7B_7B_7B, 0x7B_7B_7B_7B, 0x7B_7B
 __CONST_32_BYTE         dd  0x20_20_20_20, 0x20_20_20_20, 0x20_20_20_20, 0x20_20_20_20       ;; 4*Double filled with 32 on each byte
 
 __CONST_FLIP            dd  0x0C_0D_0E_0F, 0x08_09_0A_0B, 0x04_05_06_07, 0x00_01_02_03       ;; Flipped indexes (15-0)
+__MASK_ONES                     dd  0x01_01_01_01, 0x01_01_01_01, 0x01_01_01_01, 0x01_01_01_01
 
 ;; Code section
 section .text
@@ -914,7 +916,6 @@ fstr_find_first:
 
 .fstr_find_first_loop2:                         ;; Cycling through string and substring as well
         test r8, r8                             ;; Check if cycle counter isn't zero
-        cmovz rax, r9                           ;; If all cycles were done, set return value to the found index 
         jz .fstr_find_first_found               ;; Move to the end of function
         movdqu xmm1, [r15+r11]                  ;; Load offsetted substring
         movdqu xmm2, [r14+r10]                  ;; Load offsetted string
@@ -935,6 +936,7 @@ fstr_find_first:
         jmp near .fstr_find_first_loop          ;; Return to previous cycle
 
 .fstr_find_first_found:                         ;; Substring was found
+        mov rax, r9                             ;; If all cycles were done, set return value to the found index 
         add rsp, 24                             ;; Remove stored values
 
 .fstr_find_first_end:                           ;; End of the function
@@ -1074,8 +1076,7 @@ fstr_find_last:
         sub rdx, rcx                            ;; Remove previous shift from length
 
 .fstr_find_last_loop2:                          ;; Cycling through string and substring as well
-        test r8, r8                             ;; Check if cycle counter isn't zero
-        cmovz rax, r9                           ;; If all cycles were done, set return value to the found index 
+        test r8, r8                             ;; Check if cycle counter isn't zero                          
         jz .fstr_find_last_found                ;; Move to the end of function
         movdqu xmm1, [r15+r11]                  ;; Load offsetted substring
         movdqu xmm2, [r14+r10]                  ;; Load offsetted string
@@ -1096,6 +1097,7 @@ fstr_find_last:
         jmp near .fstr_find_last_loop           ;; Return to previous cycle
 
 .fstr_find_last_found:                          ;; Substring was found
+        mov rax, r9                             ;; If all cycles were done, set return value to the found index 
         add rsp, 24                             ;; Remove stored values
 
 .fstr_find_last_end:                            ;; End of the function
@@ -1110,6 +1112,60 @@ fstr_find_last:
         pop rbp
         ret
 ;; end fstr_find_last
+
+
+;; FSTRCOUNT 
+;; Counts how many does does a character appear in a fstring
+;;
+;; @param
+;;      fstring *fstr   - RDI - Source where will be the string searched for
+;;      ulong start1    - RSI - Starting index of fstr
+;;      ulong end1      - RDX - Endind index of fstr
+;;      char *symbol    - RCX - Character to be counted
+;; @return Amount how many times was 
+fstrcount:
+        cmp rdx, qword[rdi+FSTR_LENGTH_OFFSET]  ;; Check if the end is bigger than the string length
+        cmova rdx, qword[rdi+FSTR_LENGTH_OFFSET] ;; If end is bigger than length change end to length
+        cmp rsi, rdx                            ;; Check if starting index is bigger than the ending
+        jbe .fstrcount_nabove                   ;; Start is not above end
+        xor rsi, rsi                            ;; If starting index is bigger than ending index, change it to 0
+.fstrcount_nabove:
+        
+        mov r8, rdx                             ;; Get the last index
+        sub r8, rsi                             ;; Subtract starting index to get the length
+        mov rdx, r8                             ;; Copy length to length counter for pcmestrm
+        add r8, 15                              ;; Align counter
+        and r8, -16
+        shr r8, 4                               ;; Get amount of cycles needed 
+
+        mov r9, qword[rdi+FSTR_TEXT_OFFSET]     ;; Load text
+        movdqu xmm3, [__MASK_ONES]              ;; Load mask   
+        mov rax, 1                              ;; Set length of symbol to 1 (as it is)
+
+        pxor xmm1, xmm1                         ;; Zero out all bytes to get \0
+        pinsrb xmm1, ecx, 0                     ;; Load symbol to 1st byte
+        xor rcx, rcx                            ;; RCX is no longer needed, it is used as a counter of occurences                           
+        pxor xmm4, xmm4                         ;; All zeroes vector for addition later
+
+.fstrcount_loop:                                ;; Vectorized loop
+        test r8, r8                             ;; Test if all cycles were done
+        jz .fstrcount_end                       ;; Jump to end
+        movdqu xmm2, [r9+rsi]                   ;; Load text with offset
+        pcmpestrm xmm1, xmm2, 0x60              ;; Find in set (set of 1 in this case)       
+        pand xmm0, xmm3                         ;; Make -1 into +1
+        psadbw xmm0, xmm4                       ;; Get sum of 1s
+        pextrb rdi, xmm0, 0x0                   ;; RDI is no longer needed used to get the sum from lower part
+        add rcx, rdi                            ;; Add occurences to counter
+        pextrb rdi, xmm0, 0x8                   ;; Extract sum from upper part
+        add rcx, rdi                            ;; Add to occurences
+        sub r8, 1                               ;; Decrement counter
+        add rsi, 16                             ;; Increase index
+        sub rdx, 16                             ;; Decrease length
+        jmp short .fstrcount_loop
+.fstrcount_end:
+        mov rax, rcx                            ;; Set counter as return value
+        ret
+;; fstrcount
 
 
 ;; FSTRSPLIT 
