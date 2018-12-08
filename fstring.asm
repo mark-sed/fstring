@@ -842,16 +842,26 @@ fstr_find_first:
 
         mov r12, rdx                            ;; Get ending index
         sub r12, rsi                            ;; Subtract starting = Length - fstr
+        test r12, r12                           ;; Check if length is 0
+        cmovz rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr search length is 0
+        jz .fstr_find_first_end                  ;; Return
 
         mov r13, r9                             ;; Get ending index
         sub r13, r8                             ;; Subtract starting = Length - substr
+        test r13, r13                           ;; Check if length is 0
+        cmovz rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr susbtr search length is 0
+        jz .fstr_find_first_end                  ;; Return
 
         cmp r13, r12                            ;; Compare if substring isnt longer
         cmova rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr if substr wasn't found
         ja .fstr_find_first_end                 ;; Cannot be found if substring is longer than fstring
 
+
         mov r14, [rdi+FSTR_TEXT_OFFSET]         ;; Get the text of str
         mov r15, [rcx+FSTR_TEXT_OFFSET]         ;; Get the text of substr
+
+        add r10, rsi                            ;; Move offset by starting index
+        add r11, r8                             ;; Move second offset by starting index
         
         mov rbx, r12                            ;; Copy length of the 1st fstring
         add rbx, 15                             ;; Align the length to be multiple of 16
@@ -986,17 +996,26 @@ fstr_find_last:
         mov r10, rdx                            ;; Set first index to the end
         sub r10, 16                             ;; Move back by register size
 
-        xor r11, r11                            ;; Zero out seconf index
+        mov r11, rdx                            ;; Get end index
+        sub r11, rsi                            ;; Subtract starting index
 
-        cmp rdx, 16                             ;; Compare end index with 0
-        cmovb r10, r11                          ;; Set counter to zero if bellow 0 (so there is not an underflow)
+        cmp r11, 16                             ;; Compare length of compared with length
+        cmovb r10, rsi                          ;; Set counter to start index (so there is not an underflow)
         
+        xor r11, r11                            ;; Zero out seconf index
+        add r11, r8                             ;; Move second offset by starting index
 
         mov r12, rdx                            ;; Get ending index
         sub r12, rsi                            ;; Subtract starting = Length - fstr
+        test r12, r12                           ;; Check if length is 0
+        cmovz rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr search length is 0
+        jz .fstr_find_last_end                  ;; Return
 
         mov r13, r9                             ;; Get ending index
         sub r13, r8                             ;; Subtract starting = Length - substr
+        test r13, r13                           ;; Check if length is 0
+        cmovz rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr susbtr search length is 0
+        jz .fstr_find_last_end                  ;; Return
 
         cmp r13, r12                            ;; Compare if substring isnt longer
         cmova rax, qword[rdi+FSTR_LENGTH_OFFSET] ;; Set index to length of fstr if substr wasn't found

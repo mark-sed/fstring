@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]){
-    char *str = "ABCDEFGHIJ|KLMNOPQRSTUVWXYZabcdefghijk|lmnopqrstuvwxyz";
+    char *str = "ABCDEFGHIJ|KLMNOPQRSTUVWXYZabcdefghijk|lmnopqrs|tuvwxyz";
     fstring *fstr = fstrfromstr(str);
     printf("\nfstrfromstr(\"%s\")\n", str);
     //printf("%s\n", fstr_get_str(fstr));
@@ -25,13 +25,13 @@ int main(int argc, char *argv[]){
 		printf("%02d %s\n", (i+1), words[i]);
 	}*/
 
-	fstring *fsub = fstrfromstr("|");
+	fstring *fsub = fstrfromstr("||");
 	printf("%p: %p: %ld: %ld: '%s'\n", fsub, fsub->alloc_start, fsub->alloc_len, fstrlen(fsub), fstr_get_str(fsub));
 	
-	unsigned long index = _fstr_find_first(fstr, fsub);
+	unsigned long index = fstr_find_first(fstr, 10, 10000, fsub, 0, 1);
 	printf("Found first at: %lu\n", index);
 
-	index = _fstr_find_last(fstr, fsub);
+	index = fstr_find_last(fstr, 11, 10000, fsub, 0, 1);
 	printf("Found last at: %lu\n", index);
 	/*
 	printf("\nfstrflip(fstr, 5, fstrlen(fstr))\n");

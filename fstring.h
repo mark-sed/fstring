@@ -94,6 +94,11 @@ unsigned long fstr_find_last(fstring *fstr, unsigned long start1, unsigned long 
 #define _fstr_find_last(fstr, substr) fstr_find_last(fstr, 0, fstrlen(fstr), substr, 0, fstrlen(substr));
 
 /**
+ * Returns how many times is a fstring (substring) contained in a fstring
+ */ 
+unsigned long fstrcount(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
+
+/**
  * Splits FSTring by character and saves substring to a newly allocated array of string literals
  * Passed in FSTring will contain the first element (see note why)
  * Once the passed in FSTring is changed the array is changed as well, thus it is better to
@@ -105,18 +110,5 @@ unsigned long fstr_find_last(fstring *fstr, unsigned long start1, unsigned long 
  */
 // TODO: Finish
 char **fstrsplit(fstring *fstr, char separator, unsigned long *amount); // TODO: Finish
-
-
-#ifdef _ALL_DONE
-
-//TODO: ?? void fstr_switch_case(fstring *fstr, unsigned int start, unsigned int end);
-
-
-/**
- * Vrací kolikrát se substring nachází ve stringu
- */ 
-fstrcount();
-
-#endif
 
 #endif//_FSTRING_H_
