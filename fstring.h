@@ -84,9 +84,14 @@ void fstrinsert(fstring *fstr, unsigned long start, char *str);
 /**
  * Finds first appearance of an fstring in an fstring
  */
-// TODO: FINISH
 unsigned long fstr_find_first(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
 #define _fstr_find_first(fstr, substr) fstr_find_first(fstr, 0, fstrlen(fstr), substr, 0, fstrlen(substr));
+
+/**
+ * Finds last appearance of an fstring in an fstring
+ */
+unsigned long fstr_find_last(fstring *fstr, unsigned long start1, unsigned long end1, fstring *subfstr, unsigned long start2, unsigned long end2);
+#define _fstr_find_last(fstr, substr) fstr_find_last(fstr, 0, fstrlen(fstr), substr, 0, fstrlen(substr));
 
 /**
  * Splits FSTring by character and saves substring to a newly allocated array of string literals
@@ -112,10 +117,6 @@ char **fstrsplit(fstring *fstr, char separator, unsigned long *amount); // TODO:
  */ 
 fstrcount();
 
-/**
- * Vyhledá poslední výskyt podřetězce v řetězci
- */
-fstr_find_last();
 #endif
 
 #endif//_FSTRING_H_
