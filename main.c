@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]){
-    char *str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    char *str = "ABCDEF|||GHIJ|KLMNOPQRSTUVWX|YZabcdefghijklmnop|qrstuvwxyz||";
     fstring *fstr = fstrfromstr(str);
     printf("\nfstrfromstr(\"%s\")\n", str);
     //printf("%s\n", fstr_get_str(fstr));
@@ -19,11 +19,6 @@ int main(int argc, char *argv[]){
 	
 	//fstrinsert(fstr, 2, "--INJECTED--");
 	//printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
-	/*unsigned long am = 0;
-	char **words = fstrsplit(fstr, ' ', &am);
-	for(int i = 0; i < am; i++){
-		printf("%02d %s\n", (i+1), words[i]);
-	}*/
 
 	fstring *fsub = fstrfromstr("||");
 	printf("%p: %p: %ld: %ld: '%s'\n", fsub, fsub->alloc_start, fsub->alloc_len, fstrlen(fsub), fstr_get_str(fsub));
@@ -36,6 +31,13 @@ int main(int argc, char *argv[]){
 
 	index = fstrcount(fstr, 0, fstrlen(fstr), 'a');
 	printf("Count (a): %lu\n", index);
+
+	unsigned long am = 0;
+	char **words = fstrsplit(fstr, '|', &am);
+	printf("Amount: %lu\n", am);
+	for(int i = 0; i < am; i++){
+		printf("%02d %s\n", (i+1), words[i]);
+	}
 	/*
 	printf("\nfstrflip(fstr, 5, fstrlen(fstr))\n");
 	fstrflip(fstr, 5, fstrlen(fstr)); 

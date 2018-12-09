@@ -1174,6 +1174,7 @@ fstrcount:
 ;; @params
 ;;      fstring *fstr   - RDI - FSTring
 ;;      char separator  - RSI - Separator
+;;      ulong *amount   - RDX - Amount of elements in array
 ;; @return char** (Dyn allocated array of string litrals)
 ;; @code
 ;;      int subst_am = 0;
@@ -1191,7 +1192,7 @@ fstrcount:
 ;;      if(help_susbt_am < fstrlen(fstr))
 ;;              subst_am++;
 ;;
-;;      ret_arr = malloc(subst_am);
+;;      ret_arr = malloc(subst_am*sizeof(char *));
 ;;      int free_i = 0;
 ;;      int start_i = 0;
 ;;      for(int i = 0; i < fstrlen(fstr); i++){
@@ -1211,31 +1212,94 @@ fstrsplit:
         mov rbp, rsp
         and rsp, -16
         push rbx
+
         ;; Stack frame end
+        
+        mov rbx, [rdi+FSTR_TEXT_OFFSET]         ;; Load text    
+        mov r8, [rdi+FSTR_LENGTH_OFFSET]        ;; Load length
 
-        mov rdx, [rdi+FSTR_LENGTH_OFFSET]       ;; Load the length of the string
-        xor rcx, rcx                            ;; Zero out the counter
-        mov rbx, [rdi+FSTR_TEXT_OFFSET]         ;; Load the text
-       
-%assign i 0
-%rep 16
-        pinsrb xmm1, esi, i                     ;; Load the seperator to each byte
-%assign i i+1
-%endrep
-
+        mov rax, rsi                            ;; Move symbol to 8byte register
+        xor rsi, rsi                            ;; help_susbt_am counter
+        xor r9, r9                              ;; zero out susbt_am
+        xor rcx, rcx                            ;; Zero out counter 
 .fstrsplit_loop1:
-        cmp rcx, rdx                            ;; Compare counter and length
-        jae .fstrsplit_loop1_end                ;; Exit cycle if counter is bigger or equal to the length of the string
-        
-        movdqa xmm2, [rbx+rcx]                  ;; Load 16 letters
-        pcmpeqb xmm2, xmm1                      ;; Compare each byte if there is separator (mask is in xmm2)
+        cmp rcx, r8                             ;; Check if loop is done
+        je .fstrsplit_loop1_done                ;; End loop
 
-        ;; Problem: kdyz je vic separatoru vedle sebe, nelze lehce spocitat vektorizovane   
-
-        add rcx, 16                             ;; Increase counter (add i better than inc on most processors)        
-        jmp short .fstrsplit_loop1              ;; While style loop (compare is at the start)
-.fstrsplit_loop1_end:
+        cmp byte[rbx+rcx], al                   ;; Check if the current character is separator
+        jne .fstrsplit_loop1_next               ;; Continue
         
+        cmp rcx, rsi                            ;; Check if help_susbt_am is same as loop counter
+        jne .fstrsplit_loop1_ne                 ;; Not same as counter
+        mov rsi, rcx                            ;; Set help_susbt_am to i+1
+        add rsi, 1
+        jmp short .fstrsplit_loop1_next         ;; Continue
+
+.fstrsplit_loop1_ne:                            
+        mov rsi, rcx                            ;; Set help_susbt_am to i+1
+        add rsi, 1
+        add r9, 1                               ;; Increase amount of separators
+
+.fstrsplit_loop1_next:
+        add rcx, 1                              ;; Increase counter
+        jmp short .fstrsplit_loop1              ;; While style loop
+
+.fstrsplit_loop1_done:
+        cmp rsi, r8                             ;; Compare with length
+        jae .fstrsplit_loop1_noadjust           ;; No adjusting needed
+        add r9, 1                               ;; Adjust (also makes 0 separators into 1)
+.fstrsplit_loop1_noadjust:
+        mov [rdx], r9                           ;; Save the amout to the returned value
+
+        push rdi                                ;; Save fstring and other needed registers
+        push r9
+        push r8
+        push rax
+        push rbx
+
+        mov rdi, r9                             ;; Set malloc argument to amount of substring
+        shl rdi, 3                              ;; Multiply by 8 (sizeof char *)
+        call malloc                             ;; Allocate
+
+        pop r11                                 ;; Get text into r11
+        pop rbx                                 ;; Save separator into rbx, rax is char **
+        pop r8
+        pop r9
+        pop rdi                                 ;; Restore registers
+        
+        xor rcx, rcx                            ;; Loop counter i
+        xor rdx, rdx                            ;; free_i
+        xor r10, r10                            ;; start_i
+
+        mov [rax], r11                          ;; Set 0 index as the text itself
+
+.fstrsplit_loop2:
+        cmp rcx, r8                             ;; Check if loop is done
+        je .fstrsplit_loop2_done                ;; End loop        
+        
+        cmp byte[r11+rcx], bl                   ;; Compare with separator
+        jne .fstrsplit_loop2_next               ;; Continue
+        mov byte[r11+rcx], 0                    ;; Save zero
+
+        cmp r10, rcx                            ;; compare free_i with counter
+        jne .fstrsplit_loop2_ne
+        mov r10, rcx                            ;; Copy counter
+        add r10, 1                              ;; Increment
+        jmp short .fstrsplit_loop2_next         ;; Skip other parts
+
+.fstrsplit_loop2_ne:
+        mov r12, r11                            ;; Get address
+        add r12, r10                            ;; Add offset
+        mov [rax+rdx*8], r12                    ;; Save address with offset
+        add rdx, 1                              ;; Increment free_i
+        mov r10, rcx                            ;; Copy counter
+        add r10, 1                              ;; Increment starting address
+
+.fstrsplit_loop2_next:                          
+        add rcx, 1                              ;; Increment counter
+        jmp short .fstrsplit_loop2              ;; While style loop
+
+.fstrsplit_loop2_done:
         ;; Leaving function
         pop rbx
         mov rsp, rbp

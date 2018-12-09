@@ -1,2 +1,4 @@
 Make constants aligned
 Dont use counters in simd loops but FLAGS
+String multiply - "-!"*2 -> "-!-!"
+Switch case - lower to upper and vice versa
