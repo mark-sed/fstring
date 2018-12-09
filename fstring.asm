@@ -313,8 +313,9 @@ fstrappend:
         mov rdx, r12                            ;; Set length to length of str
         call fmemuumove                         ;; Both addresses are unaligned, append
 
-        add r12, r15                            ;; Add previous length to appended str length
-        mov qword[r14+FSTR_LENGTH_OFFSET], r12  ;; Set length to a new length
+        mov rax, qword[r14+FSTR_LENGTH_OFFSET]
+        add rax, r12
+        mov qword[r14+FSTR_LENGTH_OFFSET], rax  ;; Set length to a new length
 
         ;; Leaving function
         pop r15

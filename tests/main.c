@@ -3,11 +3,39 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]){
+    
+	char *t1 = "HelloTherethisisthetext123456";
+	char *t2 = "Thiswasinsertedatthestartoftheappendedtext";
+	char *t3 = "FINDME";
+
+	fstring *fstr = fstrfromstr(t1);
+	
+	fstr_to_lower(fstr, 0, fstrlen(fstr));
+
+	for(unsigned int i = 0; i < 4000; i++){
+		fstrappend(fstr, t1);
+	}
+
+	fstr_to_upper(fstr, 0, fstrlen(fstr));
+
+	fstrinsert(fstr, 1, t2);
+
+	fstrappend(fstr, t3);
+
+	fstring *fnd = fstrfromstr(t3);
+
+	unsigned long i = _fstr_find_first(fstr, fnd);
+	printf("\nFound at: %lu (should be %lu)\n", i, fstrlen(fstr)-fstrlen(fnd));
+
+	fstrfree(fstr);
+
+	/*
     char *str = "ABCDEF|||GHIJ|KLMNOPQRSTUVWX|YZabcdefghijklmnop|qrstuvwxyz||";
     fstring *fstr = fstrfromstr(str);
     printf("\nfstrfromstr(\"%s\")\n", str);
     //printf("%s\n", fstr_get_str(fstr));
     printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
+	*/
 
 	//fstrappend(fstr, ". I appended this");
 
@@ -20,6 +48,7 @@ int main(int argc, char *argv[]){
 	//fstrinsert(fstr, 2, "--INJECTED--");
 	//printf("%p: %p: %ld: %ld: '%s'\n", fstr, fstr->alloc_start, fstr->alloc_len, fstrlen(fstr), fstr_get_str(fstr));
 
+	/*
 	fstring *fsub = fstrfromstr("||");
 	printf("%p: %p: %ld: %ld: '%s'\n", fsub, fsub->alloc_start, fsub->alloc_len, fstrlen(fsub), fstr_get_str(fsub));
 	
@@ -38,6 +67,7 @@ int main(int argc, char *argv[]){
 	for(int i = 0; i < am; i++){
 		printf("%02d %s\n", (i+1), words[i]);
 	}
+	*/
 	/*
 	printf("\nfstrflip(fstr, 5, fstrlen(fstr))\n");
 	fstrflip(fstr, 5, fstrlen(fstr)); 
